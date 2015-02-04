@@ -34,11 +34,11 @@ namespace NgVal
                     new ControllerContext())
                     .SelectMany(v => v.GetClientValidationRules()).ToArray();
 
-            var validatorMessages = validations.ToDictionary(k => k.ValidationType, v => v.ErrorMessage);
+           // var validatorMessages = validations.ToDictionary(k => k.ValidationType, v => v.ErrorMessage);
 
             string result = "";
 
-            result += GetNgValDirectiveString(validatorMessages);
+            result += GetNgValDirectiveString(validations);
             result += GetValidatorDirectivesString(validations);
 
             //string validatorMessagesStr = "{";
@@ -83,9 +83,33 @@ namespace NgVal
             }
         }
 
-        private static string GetNgValDirectiveString(Dictionary<string, string> validatorMessages)
+        private static string GetNgValDirectiveString(IEnumerable<ModelClientValidationRule> validations)
         {
-            return string.Format("ngval='{0}'", Json.Encode(validatorMessages));
+            Dictionary<string, string> errorMessage = new Dictionary<string, string>();
+            foreach (ModelClientValidationRule rule in validations)
+            {
+                switch (rule.ValidationType.ToLower())
+                {
+                    case "required":
+                    case "regex":
+                        errorMessage.Add(rule.ValidationType.ToLower(), rule.ErrorMessage);
+                        break;
+                    case "range":
+                        errorMessage.Add("minlength", rule.ErrorMessage);
+                        errorMessage.Add("maxlength", rule.ErrorMessage);
+                        break;
+                    case "length":
+                        if (rule.ValidationParameters.ContainsKey("min"))
+                            errorMessage.Add("minlength", rule.ErrorMessage);
+                        if (rule.ValidationParameters.ContainsKey("max"))
+                            errorMessage.Add("maxlength", rule.ErrorMessage);
+                        break;
+                    default:
+                        errorMessage.Add(rule.ValidationType.ToLower(), rule.ErrorMessage);
+                        break;
+                }
+            }
+            return string.Format("ngval='{0}'", Json.Encode(errorMessage));
         }
     }
 }
